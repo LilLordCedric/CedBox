@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=80.9.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cedbox"
+version = "0.1.4"
+description = "A Python utility package for data handling, input validation, Morse code processing, and audio generation/streaming"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Cedric Sascha Wagner", email = "cedric.sascha.wagner@outlook.de"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Utilities",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+]
+dependencies = [
+    "pandas>=2.0.0",
+    "sounddevice>=0.5.2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[tool.setuptools]
+packages = ["cedbox"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

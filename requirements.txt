@@ -1,0 +1,8 @@
+pandas>=2.0.0
+setuptools==80.9.0
+pytest>=8.0.0
+build>=1.0.0
+wheel>=0.42.0
+twine>=4.0.0
+sounddevice>=0.5.2
+numpy>=2.3.0
