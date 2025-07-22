@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cedbox"
-version = "0.1.5"
+version = "0.1.6"
 description = "A Python utility package for data handling, input validation, Morse code processing, and audio generation/streaming"
 readme = "README.md"
 requires-python = ">=3.10"
