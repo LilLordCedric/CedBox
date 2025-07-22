@@ -1,5 +1,5 @@
 import unittest
-from cedbox.easymorse import EasyMorse, MORSE_CODE_DICT
+from cedbox.easymorse import EasyMorse, MC_DICT
 
 
 class TestEasyMorse(unittest.TestCase):
@@ -10,7 +10,7 @@ class TestEasyMorse(unittest.TestCase):
         morse = EasyMorse()
         self.assertIsNotNone(morse.morse_dict)
         self.assertIn('A', morse.morse_dict)
-        self.assertEqual(morse.morse_dict['A'], '_'.join(MORSE_CODE_DICT['A']))
+        self.assertEqual(morse.morse_dict['A'], '_'.join(MC_DICT['A']))
         self.assertEqual(morse.morse_dict[' '], '|')
         self.assertFalse(hasattr(morse, 'text'))
         self.assertFalse(hasattr(morse, 'seq'))
@@ -61,7 +61,7 @@ class TestEasyMorse(unittest.TestCase):
     def test_char_to_seq_method(self):
         """Test the char_to_seq method"""
         morse = EasyMorse()
-        self.assertEqual(morse.char_to_seq('A'), '_'.join(MORSE_CODE_DICT['A']))
+        self.assertEqual(morse.char_to_seq('A'), '_'.join(MC_DICT['A']))
         self.assertEqual(morse.char_to_seq(' '), '|')
 
     def test_empty_text(self):
@@ -73,10 +73,10 @@ class TestEasyMorse(unittest.TestCase):
 
     def test_all_characters(self):
         """Test all characters in the MORSE_CODE_DICT"""
-        for char in MORSE_CODE_DICT:
+        for char in MC_DICT:
             if len(char) == 1 and char not in [',', '.']:  # Skip multi-character keys for simplicity
                 morse = EasyMorse(text=char)
-                expected_text = '_'.join(MORSE_CODE_DICT[char])
+                expected_text = '_'.join(MC_DICT[char])
                 self.assertEqual(morse.text, expected_text)
 
 
