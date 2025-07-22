@@ -1,5 +1,6 @@
 .idea
 .venv
-/dist
+/dist/
 /*.egg-info
 *.wav
+/build/
