@@ -19,7 +19,7 @@ MC_DICT = {
 
 class EasyMorse:
     def __init__(self, text: str = None, times: dict = {'.': 1, '-': 3}, brakes: dict = {'_': -1, '!': -3, '|': -7}):
-        self.morse_dict = {**{char: code.insert('_') for char, code in MC_DICT.items()}, ' ': '|'}
+        self.morse_dict = {**{char: '_'.join(code) for char, code in MC_DICT.items()}, ' ': '|'}
 
         if text:
             self.text = '!'.join(self.morse_dict[char] for char in text.upper() if char in self.morse_dict).replace('!|!', '|')
@@ -32,3 +32,4 @@ if __name__ == "__main__":
     morse = EasyMorse(text='aa aa')
     assert morse.seq == [1, -1, 3, -3, 1, -1, 3, -7, 1, -1, 3, -3, 1, -1, 3]
     print(morse.seq)
+    print(morse.text)
