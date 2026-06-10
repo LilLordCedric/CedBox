@@ -9,6 +9,10 @@ from cedbox.inputs import (
 )
 from cedbox.easymorse import EasyMorse, MC_DICT
 from cedbox.easywav import EasyWav
-from cedbox.easystream import EasyStream
+try:
+    from cedbox.easystream import EasyStream
+except Exception:
+    EasyStream = None
+from cedbox.tui import TUI, Folder, Action, Switch, Checkbox, Slider, Progress, InputNode, DynamicSelect, yggdrasil_to_tui
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
