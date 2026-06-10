@@ -15,4 +15,4 @@ except Exception:
     EasyStream = None
 from cedbox.tui import TUI, Folder, Action, Switch, Checkbox, Slider, Progress, InputNode, DynamicSelect, yggdrasil_to_tui
 
-__version__ = "0.1.7"
+__version__ = "0.1.8"

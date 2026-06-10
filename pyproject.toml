@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cedbox"
-version = "0.1.7"
+version = "0.1.8"
 description = "A Python utility package for data handling, input validation, Morse code processing, and audio generation/streaming"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Cedric Sascha Wagner", email = "cedric.sascha.wagner@gmail.com"}
+    {name = "Cedric Sascha Wagner", email = "cedric.sascha.wagner@outlook.de"}
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -35,7 +35,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["cedbox"]
+packages = ["cedbox", "cedbox.tui"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
