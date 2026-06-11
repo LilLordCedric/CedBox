@@ -103,7 +103,9 @@ class TUI:
                 if data:
                     if len(data) == 6 and data.startswith(b'\x1b[M'):
                         cb = data[3]
-                        if cb == 33: # Middle click press
+                        if cb == 32: # Left click press
+                            return '\x1b[D' # Left
+                        elif cb == 33: # Middle click press
                             return '\x1b[C' # Right
                         elif cb == 96: # Mouse wheel up
                             return '\x1b[A' # Up
