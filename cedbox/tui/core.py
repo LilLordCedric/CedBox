@@ -99,8 +99,15 @@ class TUI:
             tty.setraw(fd)
             rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
             if rlist:
-                data = os.read(fd, 3)
+                data = os.read(fd, 6)
                 if data:
+                    if len(data) == 6 and data.startswith(b'\x1b[M'):
+                        cb = data[3]
+                        if cb == 33: # Middle click press
+                            return '\x1b[C' # Right
+                        elif cb == 34: # Right click press
+                            return '\x1b[D' # Left
+                        return None
                     return data.decode('utf-8', errors='ignore')
             return None
         finally:
@@ -251,11 +258,11 @@ class TUI:
         sys.stdout.flush()
 
     def suspend(self):
-        sys.stdout.write("\033[?25h\033[?1049l")
+        sys.stdout.write("\033[?1000l\033[?25h\033[?1049l")
         sys.stdout.flush()
 
     def resume(self):
-        sys.stdout.write("\033[?1049h\033[?25l\033[H\033[J")
+        sys.stdout.write("\033[?1049h\033[?1000h\033[?25l\033[H\033[J")
         sys.stdout.flush()
 
     def to_json(self) -> dict:
