@@ -38,9 +38,11 @@ class TUI:
         if self.root:
             self.columns: List[List[BaseNode]] = [self.root.get_children()]
             self.indices: List[int] = [0]
+            self.scroll_offsets: List[int] = [0]
         else:
             self.columns = []
             self.indices = []
+            self.scroll_offsets = []
             
         self.active_col = 0
         self.message = ""
@@ -138,9 +140,21 @@ class TUI:
             max_rows = min(max_rows, self.max_height)
         else:
             # Default max height is terminal height minus overhead
-            max_rows = min(max_rows, term_height - 12)
+            max_rows = min(max_rows, max(1, term_height - 12))
             
         max_rows = max(max_rows, self.min_height)
+
+        # Ensure scroll offsets are set and clamped for all columns
+        for c in range(len(self.columns)):
+            col_nodes = self.get_filtered_column(c)
+            while len(self.scroll_offsets) <= c:
+                self.scroll_offsets.append(0)
+            idx = self.indices[c]
+            if idx < self.scroll_offsets[c]:
+                self.scroll_offsets[c] = idx
+            elif idx >= self.scroll_offsets[c] + max_rows:
+                self.scroll_offsets[c] = idx - max_rows + 1
+            self.scroll_offsets[c] = max(0, min(self.scroll_offsets[c], len(col_nodes) - max_rows))
 
         sys.stdout.write("\033[H") # Move to top
         
@@ -161,9 +175,10 @@ class TUI:
             line = " "
             for col_idx in range(len(self.columns)):
                 col_nodes = self.get_filtered_column(col_idx)
-                if row_idx < len(col_nodes):
-                    node = col_nodes[row_idx]
-                    is_selected = (self.indices[col_idx] == row_idx)
+                actual_idx = row_idx + self.scroll_offsets[col_idx]
+                if actual_idx < len(col_nodes):
+                    node = col_nodes[actual_idx]
+                    is_selected = (self.indices[col_idx] == actual_idx)
                     is_active_col = (self.active_col == col_idx)
                     
                     label = node.get_label()
@@ -461,6 +476,7 @@ class TUI:
                         self.active_col -= 1
                         self.columns = self.columns[:self.active_col+1]
                         self.indices = self.indices[:self.active_col+1]
+                        self.scroll_offsets = self.scroll_offsets[:self.active_col+1]
                     continue
 
                 if key == '\x1b[A': # Up
@@ -486,9 +502,11 @@ class TUI:
                             if len(self.columns) > self.active_col + 1:
                                 self.columns[self.active_col+1] = children
                                 self.indices[self.active_col+1] = 0
+                                self.scroll_offsets[self.active_col+1] = 0
                             else:
                                 self.columns.append(children)
                                 self.indices.append(0)
+                                self.scroll_offsets.append(0)
                             self.active_col += 1
                         else:
                             msg = node.execute()
@@ -497,6 +515,7 @@ class TUI:
                     self.active_col -= 1
                     self.columns = self.columns[:self.active_col+1]
                     self.indices = self.indices[:self.active_col+1]
+                    self.scroll_offsets = self.scroll_offsets[:self.active_col+1]
                     self.search_buffer = ""
         finally:
             from .bridge import set_active_tui
