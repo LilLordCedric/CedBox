@@ -105,8 +105,10 @@ class TUI:
                         cb = data[3]
                         if cb == 33: # Middle click press
                             return '\x1b[C' # Right
-                        elif cb == 34: # Right click press
-                            return '\x1b[D' # Left
+                        elif cb == 96: # Mouse wheel up
+                            return '\x1b[A' # Up
+                        elif cb == 97: # Mouse wheel down
+                            return '\x1b[B' # Down
                         return None
                     return data.decode('utf-8', errors='ignore')
             return None
