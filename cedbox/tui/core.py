@@ -99,11 +99,9 @@ class TUI:
             tty.setraw(fd)
             rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
             if rlist:
-                ch = sys.stdin.read(1)
-                if ch == '\x1b':
-                    rest = sys.stdin.read(2)
-                    return ch + rest
-                return ch
+                data = os.read(fd, 3)
+                if data:
+                    return data.decode('utf-8', errors='ignore')
             return None
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
