@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, List, Optional, Union, Any
+from typing import Callable, List, Optional, Union
 
 class BaseNode:
     def __init__(self, label: Union[str, Callable[[], str]], hotkey: Optional[str] = None):
