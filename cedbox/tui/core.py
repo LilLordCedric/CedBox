@@ -391,9 +391,15 @@ class TUI:
 
                 # Global keys
                 if not self.edit_mode and not self.search_mode:
-                    if key.lower() == 'q': break
-                    if key.lower() == 'h': self.show_help = not self.show_help; continue
-                    if key == '/': self.search_mode = True; self.search_buffer = ""; continue
+                    if key.lower() == 'q':
+                        break
+                    if key.lower() == 'h':
+                        self.show_help = not self.show_help
+                        continue
+                    if key == '/':
+                        self.search_mode = True
+                        self.search_buffer = ""
+                        continue
 
                 # Editor Mode
                 if self.editor_mode:
@@ -494,7 +500,7 @@ class TUI:
                     self.indices[self.active_col] = (self.indices[self.active_col] + 1) % len(col_nodes)
                 elif key == '\x1b[C' or key in ('\r', '\n'): # Right / Enter
                     node = col_nodes[self.indices[self.active_col]]
-                    from .nodes import Folder, Slider, InputNode, EditorNode
+                    from .nodes import Slider, InputNode, EditorNode
                     
                     if isinstance(node, (Slider, InputNode)):
                         self.edit_mode = True
