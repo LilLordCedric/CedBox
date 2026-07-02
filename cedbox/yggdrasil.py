@@ -148,8 +148,8 @@ class Yggdrasil(dict):
         """
         tree = cls(leaf_behavior=leaf_behavior)
 
-        # Iterate through each row in the DataFrame using itertuples for better performance
-        for row in df.itertuples(index=False, name=None):
+        # Iterate through each row in the DataFrame using values.tolist() for better performance
+        for row in df.values.tolist():
             # Add the row as a fiber to the tree
             tree.add_fiber(row)
 
