@@ -22,7 +22,7 @@ def int_put(text, max_times=None, times=1, default=1, conditions=None) -> int:
         int_input = int(raw_input)
         for condition in conditions:
             if not condition(int_input):
-                raise ValueError("Condition not met")
+                raise ValueError(f"Condition not met for {int_input}")
         return int_input
     except Exception as e:
         print(f'{raw_input} is not valid {e}')
@@ -41,7 +41,7 @@ def float_put(text, max_times=None, times=1, default=1.0, conditions=None) -> fl
         float_input = float(raw_input)
         for condition in conditions:
             if not condition(float_input):
-                raise ValueError("Condition not met")
+                raise ValueError(f"Condition not met for {float_input}")
         return float_input
     except Exception as e:
         print(f'{raw_input} is not valid {e}')
@@ -85,7 +85,7 @@ def file_put(text, max_times=None, times=1, default=None):
     try:
         path = pathlib.Path(raw_input)
         if not path.exists():
-            raise FileNotFoundError("Path does not exist")
+            raise ValueError(f"Path does not exist: {path}")
         return path
     except Exception as e:
         print(f'{raw_input} is not a valid Path: {e}')
@@ -114,7 +114,7 @@ def mail_put(text, max_times=None, times=1, default=None):
     try:
         email_address = email.utils.parseaddr(email_str)[1]
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_address):
-            raise ValueError("Invalid email address")
+            raise ValueError(f"Invalid email format: {email_address}")
         return email_address
     except Exception as e:
         print(f'{email_str} is not valid', e)
