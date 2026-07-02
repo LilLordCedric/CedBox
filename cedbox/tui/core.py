@@ -500,7 +500,7 @@ class TUI:
                     self.indices[self.active_col] = (self.indices[self.active_col] + 1) % len(col_nodes)
                 elif key == '\x1b[C' or key in ('\r', '\n'): # Right / Enter
                     node = col_nodes[self.indices[self.active_col]]
-                    from .nodes import Folder, Slider, InputNode, EditorNode
+                    from .nodes import Slider, InputNode, EditorNode
                     
                     if isinstance(node, (Slider, InputNode)):
                         self.edit_mode = True
