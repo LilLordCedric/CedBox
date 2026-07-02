@@ -1,5 +1,6 @@
 import pytest
 import sys
+from unittest.mock import patch
 from cedbox import Yggdrasil, TUI
 from cedbox.tui import yggdrasil_to_tui
 
@@ -52,3 +53,19 @@ class TestTUIYggdrasil:
         res_vol = tui.execute_json_path("Settings/System/Volume", 60)
         assert res_vol["status"] == "success"
         assert tui.state["Settings"]["System"]["Volume"] == 60
+
+    @patch("sys.stdout")
+    def test_tui_suspend(self, mock_stdout):
+        """Test TUI suspend writes correct ANSI escape sequences"""
+        tui = TUI(title="SuspendApp")
+        tui.suspend()
+        mock_stdout.write.assert_called_with("\033[?1000l\033[?25h\033[?1049l")
+        mock_stdout.flush.assert_called_once()
+
+    @patch("sys.stdout")
+    def test_tui_resume(self, mock_stdout):
+        """Test TUI resume writes correct ANSI escape sequences"""
+        tui = TUI(title="ResumeApp")
+        tui.resume()
+        mock_stdout.write.assert_called_with("\033[?1049h\033[?1000h\033[?25l\033[H\033[J")
+        mock_stdout.flush.assert_called_once()
