@@ -3,6 +3,7 @@ import sys
 from unittest.mock import patch
 from cedbox import Yggdrasil, TUI
 from cedbox.tui import yggdrasil_to_tui
+from cedbox.tui.core import color_text
 
 class TestTUIYggdrasil:
     def test_yggdrasil_to_tui_basic(self):
@@ -69,3 +70,9 @@ class TestTUIYggdrasil:
         tui.resume()
         mock_stdout.write.assert_called_with("\033[?1049h\033[?1000h\033[?25l\033[H\033[J")
         mock_stdout.flush.assert_called_once()
+def test_color_text():
+    """Test the color_text utility function."""
+    assert color_text("Hello", "31") == "\033[31mHello\033[0m"
+    assert color_text("World", "32") == "\033[32mWorld\033[0m"
+    assert color_text("", "0") == "\033[0m\033[0m"
+    assert color_text("Test", "1;31") == "\033[1;31mTest\033[0m"
