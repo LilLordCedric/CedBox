@@ -114,7 +114,7 @@ def mail_put(text, max_times=None, times=1, default=None):
     try:
         email_address = email.utils.parseaddr(email_str)[1]
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email_address):
-            raise ValueError("Invalid email format")
+            raise ValueError("Invalid email address")
         return email_address
     except Exception as e:
         print(f'{email_str} is not valid', e)

@@ -13,6 +13,24 @@ def set_active_tui(tui_instance: Any):
     global _active_tui
     _active_tui = tui_instance
 
+def _interactive_input_action(key: str, tree: Union[Yggdrasil, dict], input_func: Callable, str_default: bool = False):
+    def run_input():
+        tui = get_active_tui()
+        if tui:
+            tui.suspend()
+        try:
+            prompt = f"Enter new value for {key} (current: {tree[key]}): "
+            default_val = str(tree[key]) if str_default else tree[key]
+            new_val = input_func(prompt, default=default_val)
+            tree[key] = new_val
+            return f"{key} set to {new_val}"
+        except Exception as e:
+            return f"Error setting {key}: {e}"
+        finally:
+            if tui:
+                tui.resume()
+    return run_input
+
 def yggdrasil_to_tui(tree: Union[Yggdrasil, dict], name: str = "Root") -> Folder:
     """
     Recursively maps an Yggdrasil (or dict) tree structure to a TUI Folder/Node hierarchy.
@@ -43,24 +61,8 @@ def yggdrasil_to_tui(tree: Union[Yggdrasil, dict], name: str = "Root") -> Folder
             # If it's a number, we can use an Action that suspends the TUI
             # and runs the console input validation functions (int_put / float_put) from cedbox.inputs!
             def make_action(k=key, t=tree, is_float=isinstance(value, float)):
-                def run_input():
-                    tui = get_active_tui()
-                    if tui:
-                        tui.suspend()
-                    try:
-                        prompt = f"Enter new value for {k} (current: {t[k]}): "
-                        if is_float:
-                            new_val = float_put(prompt, default=t[k])
-                        else:
-                            new_val = int_put(prompt, default=t[k])
-                        t[k] = new_val
-                        return f"{k} set to {new_val}"
-                    except Exception as e:
-                        return f"Error setting {k}: {e}"
-                    finally:
-                        if tui:
-                            tui.resume()
-                return run_input
+                func = float_put if is_float else int_put
+                return _interactive_input_action(k, t, func)
             
             # We display the current value in the Action label dynamically
             def make_label(k=key, t=tree):
@@ -72,21 +74,7 @@ def yggdrasil_to_tui(tree: Union[Yggdrasil, dict], name: str = "Root") -> Folder
         else:
             # Any other leaf type (usually string) maps to string_put input function
             def make_action(k=key, t=tree):
-                def run_input():
-                    tui = get_active_tui()
-                    if tui:
-                        tui.suspend()
-                    try:
-                        prompt = f"Enter new value for {k} (current: {t[k]}): "
-                        new_val = string_put(prompt, default=str(t[k]))
-                        t[k] = new_val
-                        return f"{k} set to {new_val}"
-                    except Exception as e:
-                        return f"Error setting {k}: {e}"
-                    finally:
-                        if tui:
-                            tui.resume()
-                return run_input
+                return _interactive_input_action(k, t, string_put, str_default=True)
             
             def make_label(k=key, t=tree):
                 return lambda: f"{k}: {t[k]}"

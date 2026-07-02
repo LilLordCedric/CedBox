@@ -2,6 +2,7 @@ import pytest
 import sys
 from cedbox import Yggdrasil, TUI
 from cedbox.tui import yggdrasil_to_tui
+from cedbox.tui.core import color_text
 
 class TestTUIYggdrasil:
     def test_yggdrasil_to_tui_basic(self):
@@ -52,3 +53,10 @@ class TestTUIYggdrasil:
         res_vol = tui.execute_json_path("Settings/System/Volume", 60)
         assert res_vol["status"] == "success"
         assert tui.state["Settings"]["System"]["Volume"] == 60
+
+def test_color_text():
+    """Test the color_text utility function."""
+    assert color_text("Hello", "31") == "\033[31mHello\033[0m"
+    assert color_text("World", "32") == "\033[32mWorld\033[0m"
+    assert color_text("", "0") == "\033[0m\033[0m"
+    assert color_text("Test", "1;31") == "\033[1;31mTest\033[0m"
