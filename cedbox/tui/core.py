@@ -391,9 +391,15 @@ class TUI:
 
                 # Global keys
                 if not self.edit_mode and not self.search_mode:
-                    if key.lower() == 'q': break
-                    if key.lower() == 'h': self.show_help = not self.show_help; continue
-                    if key == '/': self.search_mode = True; self.search_buffer = ""; continue
+                    if key.lower() == 'q':
+                        break
+                    if key.lower() == 'h':
+                        self.show_help = not self.show_help
+                        continue
+                    if key == '/':
+                        self.search_mode = True
+                        self.search_buffer = ""
+                        continue
 
                 # Editor Mode
                 if self.editor_mode:
