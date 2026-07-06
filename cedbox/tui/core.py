@@ -6,7 +6,7 @@ import select
 import time
 import threading
 from typing import List, Optional, Callable, Dict, Union, Any
-from .nodes import BaseNode, Folder
+from .nodes import BaseNode, Folder, InputNode
 
 def color_text(text: str, color_code: str) -> str:
     return f"\033[{color_code}m{text}\033[0m"
@@ -61,6 +61,7 @@ class TUI:
         # Sizing
         self.min_height = min_height
         self.max_height = max_height
+        self.col_width = 25
 
     def set_status_callback(self, callback: Callable[[], List[str]]):
         self.status_callback = callback
@@ -96,26 +97,24 @@ class TUI:
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
+            # Flush stdout and stdin to ensure no pending characters leak
+            sys.stdout.flush()
+            termios.tcflush(fd, termios.TCIFLUSH)
+            
             tty.setraw(fd)
+            # Disable ECHO and ECHOCTL globally for the raw block
+            raw_settings = termios.tcgetattr(fd)
+            raw_settings[3] = raw_settings[3] & ~termios.ECHO & ~termios.ECHONL
+            termios.tcsetattr(fd, termios.TCSANOW, raw_settings)
+            
             rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
             if rlist:
                 data = os.read(fd, 6)
                 if data:
-                    if len(data) == 6 and data.startswith(b'\x1b[M'):
-                        cb = data[3]
-                        if cb == 32: # Left click press
-                            return '\x1b[C' # Right
-                        elif cb == 33: # Middle click press
-                            return '\x1b[D' # Left
-                        elif cb == 96: # Mouse wheel up
-                            return '\x1b[A' # Up
-                        elif cb == 97: # Mouse wheel down
-                            return '\x1b[B' # Down
-                        return None
                     return data.decode('utf-8', errors='ignore')
             return None
         finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            termios.tcsetattr(fd, termios.TCSANOW, old_settings)
 
     def get_filtered_column(self, col_idx: int) -> List[BaseNode]:
         nodes = self.columns[col_idx]
@@ -139,7 +138,7 @@ class TUI:
             self._draw_editor(term_width, term_height)
             return
 
-        col_width = 25
+        col_width = self.col_width
         
         # Calculate needed rows based on content
         content_rows = max(len(self.get_filtered_column(c)) for c in range(len(self.columns)))
@@ -191,18 +190,35 @@ class TUI:
                     is_active_col = (self.active_col == col_idx)
                     
                     label = node.get_label()
+
                     is_current_setting = node.is_active()
 
+                    from .nodes import Label
+
                     if is_selected and is_active_col:
-                        if self.edit_mode: 
+                        if isinstance(node, Label):
+                            prefix, style = "  ", "90" # Dim gray for static labels, no selection prefix
+                        elif self.edit_mode: 
                             prefix, style = "* ", "1;33;7"
-                            from .nodes import InputNode
-                            if isinstance(node, InputNode):
-                                label = f"{node.get_label()}: {self.search_buffer}_"
-                        else: prefix, style = "> ", "1;32;7"
-                    elif is_selected: prefix, style = "- ", "1;34"
-                    elif is_current_setting: prefix, style = "* ", "1;34"
-                    else: prefix, style = "  ", "0"
+                        else:
+                            # Highlighted active item: Use green inverse
+                            prefix, style = "> ", "1;32;7"
+                    elif is_selected:
+                        # Selected in inactive column
+                        prefix, style = "  " if isinstance(node, Label) else "- ", "90" if isinstance(node, Label) else "1;34"
+                    elif is_current_setting:
+                        prefix, style = "* ", "1;34"
+                    else:
+                        prefix = "  "
+                        # Differentiate colors based on node type
+                        if isinstance(node, Folder):
+                            style = "1;36" # Bold Cyan for Folders
+                        elif isinstance(node, InputNode):
+                            style = "1;33" # Bold Yellow for Settings/Inputs
+                        elif isinstance(node, Label):
+                            style = "90"   # Dim Gray for static Labels
+                        else:
+                            style = "0;32" # Dark Green for Executable Actions
                     
                     display_limit = col_width - 4
                     display_text = (label[:display_limit] + "..") if len(label) > display_limit else label
@@ -214,6 +230,19 @@ class TUI:
 
         sys.stdout.write(color_text("═" * term_width, "90") + "\033[K\n")
         
+        # Show full text of currently selected item if it's too long
+        selected_full_text = ""
+        if len(self.columns) > self.active_col:
+            col_nodes = self.get_filtered_column(self.active_col)
+            if self.indices[self.active_col] < len(col_nodes):
+                selected_node = col_nodes[self.indices[self.active_col]]
+                if self.edit_mode and isinstance(selected_node, InputNode):
+                    selected_full_text = f"Eingabe: {self.search_buffer}_"
+                else:
+                    selected_full_text = f"Selected: {selected_node.get_label()}"
+        sys.stdout.write(f"  {color_text(selected_full_text[:term_width-4], '1;36')}\033[K\n")
+        sys.stdout.write(color_text("─" * term_width, "90") + "\033[K\n")
+
         # Status Area
         if self.status_callback:
             status_lines = self.status_callback()
@@ -224,7 +253,7 @@ class TUI:
         
         # Log/Help line
         if self.show_help:
-            help_text = " [/] Search  [Enter] Edit/Action  [Arrows] Move  [H] Help  [Q] Quit ".center(term_width)
+            help_text = " [/] Search  [Enter] Edit/Action  [Arrows] Move  [+/-] Width  [H] Help  [Q] Quit ".center(term_width)
             sys.stdout.write(color_text(help_text, "1;37;42") + "\033[K\n")
         else:
             msg_to_show = self.message if self.message else "Use arrows to navigate, / to search, H for help."
@@ -262,11 +291,11 @@ class TUI:
         sys.stdout.flush()
 
     def suspend(self):
-        sys.stdout.write("\033[?1000l\033[?25h\033[?1049l")
+        sys.stdout.write("\033[?25h\033[?1049l")
         sys.stdout.flush()
 
     def resume(self):
-        sys.stdout.write("\033[?1049h\033[?1000h\033[?25l\033[H\033[J")
+        sys.stdout.write("\033[?1049h\033[?25l\033[H\033[J")
         sys.stdout.flush()
 
     def to_json(self) -> dict:
@@ -380,8 +409,21 @@ class TUI:
         set_active_tui(self)
         if not self.root:
             self.root = yggdrasil_to_tui(self.state, self.title)
-            self.columns = [self.root.get_children()]
-            self.indices = [0]
+        
+        # Always reset columns, indices and offsets to start at the root menu on startup
+        self.columns = [self.root.get_children()]
+        self.indices = [0]
+        # Skip leading labels if any exist in the root menu
+        from .nodes import Label
+        for idx, child in enumerate(self.columns[0]):
+            if not isinstance(child, Label):
+                self.indices[0] = idx
+                break
+        self.scroll_offsets = [0]
+        self.active_col = 0
+        self.edit_mode = False
+        self.search_mode = False
+        self.search_buffer = ""
         self.resume()
         try:
             while self.running:
@@ -504,7 +546,8 @@ class TUI:
                     
                     if isinstance(node, (Slider, InputNode)):
                         self.edit_mode = True
-                        if isinstance(node, InputNode): self.search_buffer = ""
+                        if isinstance(node, InputNode):
+                            self.search_buffer = node.get_value()
                     elif isinstance(node, EditorNode):
                         self.editor_mode = True
                         content = node.get_content()
@@ -514,13 +557,21 @@ class TUI:
                     else:
                         children = node.get_children()
                         if children:
+                            # Find first non-Label child to select by default
+                            from .nodes import Label
+                            first_selectable = 0
+                            for idx, child in enumerate(children):
+                                if not isinstance(child, Label):
+                                    first_selectable = idx
+                                    break
+                            
                             if len(self.columns) > self.active_col + 1:
                                 self.columns[self.active_col+1] = children
-                                self.indices[self.active_col+1] = 0
+                                self.indices[self.active_col+1] = first_selectable
                                 self.scroll_offsets[self.active_col+1] = 0
                             else:
                                 self.columns.append(children)
-                                self.indices.append(0)
+                                self.indices.append(first_selectable)
                                 self.scroll_offsets.append(0)
                             self.active_col += 1
                         else:
@@ -532,6 +583,12 @@ class TUI:
                     self.indices = self.indices[:self.active_col+1]
                     self.scroll_offsets = self.scroll_offsets[:self.active_col+1]
                     self.search_buffer = ""
+                elif key == '+':
+                    self.col_width = min(60, self.col_width + 5)
+                    self.message = f"Spaltenbreite erhöht auf {self.col_width}"
+                elif key == '-':
+                    self.col_width = max(15, self.col_width - 5)
+                    self.message = f"Spaltenbreite verringert auf {self.col_width}"
         finally:
             from .bridge import set_active_tui
             set_active_tui(None)

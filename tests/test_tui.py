@@ -60,7 +60,7 @@ class TestTUIYggdrasil:
         """Test TUI suspend writes correct ANSI escape sequences"""
         tui = TUI(title="SuspendApp")
         tui.suspend()
-        mock_stdout.write.assert_called_with("\033[?1000l\033[?25h\033[?1049l")
+        mock_stdout.write.assert_called_with("\033[?25h\033[?1049l")
         mock_stdout.flush.assert_called_once()
 
     @patch("sys.stdout")
@@ -68,8 +68,20 @@ class TestTUIYggdrasil:
         """Test TUI resume writes correct ANSI escape sequences"""
         tui = TUI(title="ResumeApp")
         tui.resume()
-        mock_stdout.write.assert_called_with("\033[?1049h\033[?1000h\033[?25l\033[H\033[J")
+        mock_stdout.write.assert_called_with("\033[?1049h\033[?25l\033[H\033[J")
         mock_stdout.flush.assert_called_once()
+    def test_tui_json_schema(self):
+        """Test that to_json structure outputs correct keys"""
+        tui = TUI(title="JSONApp")
+        tui.add_switch("Muted", default=True, parent="Settings")
+        tui.root = yggdrasil_to_tui(tui.state, tui.title)
+        
+        schema = tui.to_json()
+        assert "title" in schema
+        assert "menu" in schema
+        assert schema["title"] == "JSONApp"
+        assert schema["menu"]["type"] == "Folder"
+
 def test_color_text():
     """Test the color_text utility function."""
     assert color_text("Hello", "31") == "\033[31mHello\033[0m"
