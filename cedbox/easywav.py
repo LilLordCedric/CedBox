@@ -16,7 +16,8 @@ class EasyWav:
         if duration > 0:  # Signal
             num_samples = int(abs(duration) * self.sample_rate / 1000)
             factor = 2 * math.pi * self.frequency / self.sample_rate
-            return [int(32767 * math.sin(factor * i))
+            sin = math.sin
+            return [int(32767 * sin(factor * i))
                     for i in range(num_samples)]
         else:  # Pause
             num_samples = int(abs(duration) * self.sample_rate / 1000)
