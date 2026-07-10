@@ -137,21 +137,10 @@ class Progress(BaseNode):
         bar = "█" * filled + "░" * (bar_len - filled)
         return f"{super().get_label()}: {bar} {pct}%"
 
-class Label(BaseNode):
-    def __init__(self, label: Union[str, Callable[[], str]]):
-        super().__init__(label)
-
-    def execute(self) -> Optional[str]:
-        return None
-
 class InputNode(BaseNode):
-    def __init__(self, label: str, callback: Callable[[str], Optional[str]], getter: Optional[Callable[[], str]] = None):
+    def __init__(self, label: str, callback: Callable[[str], Optional[str]]):
         super().__init__(label)
         self.callback = callback
-        self.getter = getter
-
-    def get_value(self) -> str:
-        return self.getter() if self.getter else ""
 
     def execute_input(self, text: str) -> Optional[str]:
         return self.callback(text)
