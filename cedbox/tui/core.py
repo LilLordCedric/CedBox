@@ -3,9 +3,7 @@ import sys
 import tty
 import termios
 import select
-import time
-import threading
-from typing import List, Optional, Callable, Dict, Union, Any
+from typing import List, Optional, Callable, Union, Any
 from .nodes import BaseNode, Folder
 
 def color_text(text: str, color_code: str) -> str:
@@ -13,7 +11,6 @@ def color_text(text: str, color_code: str) -> str:
 
 class TUI:
     def __init__(self, root_node: Optional[Union[Folder, 'Yggdrasil', dict]] = None, title: str = "CEDTUI", min_height: int = 1, max_height: Optional[int] = None):
-        from .bridge import yggdrasil_to_tui
         from ..yggdrasil import Yggdrasil
         from .nodes import BaseNode
         
