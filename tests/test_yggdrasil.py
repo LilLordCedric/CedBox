@@ -179,6 +179,36 @@ class TestLeafBehaviors:
         # Should fall back to overwrite
         assert tree['key'] == 'value2'
 
+    def test_custom_behavior_exception_fallback_types(self):
+        """Test custom callable leaf behavior fallback across different exception types"""
+        exceptions_to_test = [
+            ZeroDivisionError("Division by zero"),
+            TypeError("Incompatible types"),
+            KeyError("Missing key"),
+            RuntimeError("Unexpected error"),
+        ]
+
+        for exc in exceptions_to_test:
+            def raise_exc(a, b):
+                raise exc
+
+            tree = Yggdrasil(leaf_behavior=raise_exc)
+            tree['item'] = 'initial'
+            tree['item'] = 'updated'
+            assert tree['item'] == 'updated', f"Failed fallback for exception {exc!r}"
+
+    def test_custom_behavior_nested_exception_fallback(self):
+        """Test custom callable leaf behavior fallback in nested subtrees"""
+        def failing_behavior(a, b):
+            raise ArithmeticError("Custom calculation failed")
+
+        tree = Yggdrasil(leaf_behavior=failing_behavior)
+        tree['branch1']['branch2']['leaf'] = 100
+        # Re-assigning nested leaf triggers custom leaf_behavior on the nested Yggdrasil subtree
+        tree['branch1']['branch2']['leaf'] = 200
+
+        assert tree['branch1']['branch2']['leaf'] == 200
+
 class TestAddFiber:
     """Tests for the add_fiber method"""
 
