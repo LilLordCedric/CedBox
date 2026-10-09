@@ -22,8 +22,7 @@ class TUI:
             self.root = None
         elif isinstance(root_node, dict) and not isinstance(root_node, BaseNode):
             self.state = Yggdrasil()
-            for k, v in root_node.items():
-                self.state[k] = v
+            self.state.update(root_node)
             self.root = None
         elif isinstance(root_node, BaseNode):
             self.root = root_node
