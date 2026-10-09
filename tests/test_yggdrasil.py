@@ -139,10 +139,25 @@ class TestLeafBehaviors:
         tree['num'] = 4
         assert tree['num'] == 5
 
-        # Division by zero should fall back to overwrite
+        # Standard float division
+        tree['float_num'] = 15.0
+        tree['float_num'] = 2.5
+        assert tree['float_num'] == 6.0
+
+        # Integer division by zero should fall back to overwrite
         tree['num'] = 10
         tree['num'] = 0
         assert tree['num'] == 0
+
+        # Float division by zero should fall back to overwrite
+        tree['float_zero'] = 10.0
+        tree['float_zero'] = 0.0
+        assert tree['float_zero'] == 0.0
+
+        # Non-numeric types should fall back to overwrite for divide behavior
+        tree['str'] = 'hello'
+        tree['str'] = 'world'
+        assert tree['str'] == 'world'
 
     def test_custom_behavior(self):
         """Test custom leaf behavior function"""
