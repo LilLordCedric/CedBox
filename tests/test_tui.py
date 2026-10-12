@@ -70,6 +70,34 @@ class TestTUIYggdrasil:
         tui.resume()
         mock_stdout.write.assert_called_with("\033[?1049h\033[?1000h\033[?25l\033[H\033[J")
         mock_stdout.flush.assert_called_once()
+
+    def test_find_node_by_path(self):
+        """Test finding nodes by their path in the TUI"""
+        tree = Yggdrasil()
+        tree["Settings"]["System"]["Volume"] = 50
+        tree["Settings"]["System"]["Muted"] = True
+        tree["Actions"]["SayHello"] = lambda: "Hello"
+
+        tui = TUI(root_node=tree, title="SearchApp")
+
+        # Test valid paths
+        node_mute = tui.find_node_by_path("Settings/System/Muted")
+        assert node_mute is not None
+        assert node_mute.get_label().startswith("Muted")
+
+        node_action = tui.find_node_by_path("Actions/SayHello")
+        assert node_action is not None
+        assert node_action.get_label() == "SayHello"
+
+        node_folder = tui.find_node_by_path("Settings/System")
+        assert node_folder is not None
+        assert node_folder.get_label() == "System"
+
+        # Test invalid paths
+        assert tui.find_node_by_path("Settings/System/NonExistent") is None
+        assert tui.find_node_by_path("NonExistentFolder") is None
+        assert tui.find_node_by_path("Settings/System/Muted/Extra") is None
+
 def test_color_text():
     """Test the color_text utility function."""
     assert color_text("Hello", "31") == "\033[31mHello\033[0m"
