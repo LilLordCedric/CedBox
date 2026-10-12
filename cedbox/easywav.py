@@ -1,6 +1,7 @@
 import wave
 import math
 import struct
+import functools
 
 
 class EasyWav:
@@ -12,6 +13,7 @@ class EasyWav:
         self.sequence: list[int] = sequence
         self.from_seq(sequence)
 
+    @functools.lru_cache(maxsize=None)
     def _generate_samples(self, duration) -> list[int]:
         if duration > 0:  # Signal
             num_samples = int(abs(duration) * self.sample_rate / 1000)
