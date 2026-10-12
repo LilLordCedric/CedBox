@@ -18,7 +18,11 @@ MC_DICT = {
 
 
 class EasyMorse:
-    def __init__(self, text: str = None, times: dict = {'.': 1, '-': 3}, brakes: dict = {'_': -1, '!': -3, '|': -7}):
+    def __init__(self, text: str = None, times: dict = None, brakes: dict = None):
+        if times is None:
+            times = {'.': 1, '-': 3}
+        if brakes is None:
+            brakes = {'_': -1, '!': -3, '|': -7}
         self.morse_dict = {**{char: '_'.join(code) for char, code in MC_DICT.items()}, ' ': '|'}
 
         if text:
