@@ -23,6 +23,7 @@ class EasyStream:
         self.time_unit: int = time_unit
         processed_sequence: list[int] = [time_unit*seq for seq in sequence]
         self.sequence: list[int] = processed_sequence
+        self._cache: dict[int, list[float]] = {}
 
         # Generate audio samples from the sequence
         for duration in processed_sequence:
@@ -38,13 +39,19 @@ class EasyStream:
         Returns:
             List of audio samples
         """
+        if duration in self._cache:
+            return self._cache[duration]
+
         if duration > 0:  # Signal
             num_samples = int(abs(duration) * self.sample_rate / 1000)
-            return [math.sin(2 * math.pi * self.frequency * (float(i) / self.sample_rate))
+            samples = [math.sin(2 * math.pi * self.frequency * (float(i) / self.sample_rate))
                     for i in range(num_samples)]
         else:  # Pause
             num_samples = int(abs(duration) * self.sample_rate / 1000)
-            return [0.0] * num_samples
+            samples = [0.0] * num_samples
+
+        self._cache[duration] = samples
+        return samples
 
 
     def stream(self) -> None:
