@@ -353,11 +353,11 @@ class TUI:
         except Exception as e:
             return {"status": "error", "message": f"Execution failed: {e}"}
 
-    def run(self):
+    def _handle_cli_args(self) -> bool:
         import json
         if "--json-schema" in sys.argv:
             print(json.dumps(self.to_json(), indent=2))
-            return
+            return True
             
         if "--json-exec" in sys.argv:
             idx = sys.argv.index("--json-exec")
@@ -370,7 +370,170 @@ class TUI:
                         value = sys.argv[v_idx + 1]
                 result = self.execute_json_path(path, value)
                 print(json.dumps(result, indent=2))
-                return
+                return True
+        return False
+
+    def _handle_editor_key(self, key: str):
+        col_nodes = self.get_filtered_column(self.active_col)
+        node = col_nodes[self.indices[self.active_col]]
+
+        if key == '\x1b': # ESC
+            self.editor_mode = False
+        elif key == '\x13': # Ctrl+S
+            msg = node.save_content("\n".join(self.editor_buffer))
+            if msg:
+                self.message = msg
+            self.editor_mode = False
+        elif key in ('\r', '\n'):
+            r, c = self.editor_cursor
+            current_line = self.editor_buffer[r]
+            self.editor_buffer[r] = current_line[:c]
+            self.editor_buffer.insert(r + 1, current_line[c:])
+            self.editor_cursor = [r + 1, 0]
+        elif key == '\x1b[A': # Up
+            self.editor_cursor[0] = max(0, self.editor_cursor[0] - 1)
+            self.editor_cursor[1] = min(len(self.editor_buffer[self.editor_cursor[0]]), self.editor_cursor[1])
+        elif key == '\x1b[B': # Down
+            self.editor_cursor[0] = min(len(self.editor_buffer) - 1, self.editor_cursor[0] + 1)
+            self.editor_cursor[1] = min(len(self.editor_buffer[self.editor_cursor[0]]), self.editor_cursor[1])
+        elif key == '\x1b[C': # Right
+            if self.editor_cursor[1] < len(self.editor_buffer[self.editor_cursor[0]]):
+                self.editor_cursor[1] += 1
+        elif key == '\x1b[D': # Left
+            self.editor_cursor[1] = max(0, self.editor_cursor[1] - 1)
+        elif key in ('\x7f', '\x08'): # Backspace
+            r, c = self.editor_cursor
+            if c > 0:
+                line = self.editor_buffer[r]
+                self.editor_buffer[r] = line[:c-1] + line[c:]
+                self.editor_cursor[1] -= 1
+            elif r > 0:
+                prev_len = len(self.editor_buffer[r-1])
+                self.editor_buffer[r-1] += self.editor_buffer[r]
+                self.editor_buffer.pop(r)
+                self.editor_cursor = [r-1, prev_len]
+        elif len(key) == 1 and key.isprintable():
+            r, c = self.editor_cursor
+            line = self.editor_buffer[r]
+            self.editor_buffer[r] = line[:c] + key + line[c:]
+            self.editor_cursor[1] += 1
+
+    def _handle_search_key(self, key: str):
+        if key == '\x1b': # Escape
+            self.search_mode = False
+            self.search_buffer = ""
+        elif key in ('\r', '\n'):
+            self.search_mode = False
+        elif key in ('\x7f', '\x08'): # Backspace
+            self.search_buffer = self.search_buffer[:-1]
+            self.indices[self.active_col] = 0
+        elif len(key) == 1 and key.isprintable():
+            self.search_buffer += key
+            self.indices[self.active_col] = 0
+
+    def _handle_edit_key(self, key: str):
+        col_nodes = self.get_filtered_column(self.active_col)
+        node = col_nodes[self.indices[self.active_col]]
+        from .nodes import Slider, InputNode
+
+        if isinstance(node, Slider):
+            if key == '\x1b[C':
+                node.adjust(node.step)
+            elif key == '\x1b[D':
+                node.adjust(-node.step)
+            elif key in ('\r', '\n', '\x1b'):
+                self.edit_mode = False
+        elif isinstance(node, InputNode):
+            if key in ('\r', '\n'):
+                msg = node.execute_input(self.search_buffer)
+                if msg:
+                    self.message = msg
+                self.edit_mode = False
+                self.search_buffer = ""
+            elif key == '\x1b':
+                self.edit_mode = False
+                self.search_buffer = ""
+            elif key in ('\x7f', '\x08'):
+                self.search_buffer = self.search_buffer[:-1]
+            elif len(key) == 1:
+                self.search_buffer += key
+
+    def _handle_normal_key(self, key: str):
+        if key.lower() == 'q':
+            self.running = False
+            return
+        if key.lower() == 'h':
+            self.show_help = not self.show_help
+            return
+        if key == '/':
+            self.search_mode = True
+            self.search_buffer = ""
+            return
+
+        col_nodes = self.get_filtered_column(self.active_col)
+        if not col_nodes:
+            if key == '\x1b[D': # Left
+                self.active_col -= 1
+                self.columns = self.columns[:self.active_col+1]
+                self.indices = self.indices[:self.active_col+1]
+                self.scroll_offsets = self.scroll_offsets[:self.active_col+1]
+            return
+
+        if key == '\x1b[A': # Up
+            self.indices[self.active_col] = (self.indices[self.active_col] - 1) % len(col_nodes)
+        elif key == '\x1b[B': # Down
+            self.indices[self.active_col] = (self.indices[self.active_col] + 1) % len(col_nodes)
+        elif key == '\x1b[C' or key in ('\r', '\n'): # Right / Enter
+            node = col_nodes[self.indices[self.active_col]]
+            from .nodes import Slider, InputNode, EditorNode
+
+            if isinstance(node, (Slider, InputNode)):
+                self.edit_mode = True
+                if isinstance(node, InputNode):
+                    self.search_buffer = ""
+            elif isinstance(node, EditorNode):
+                self.editor_mode = True
+                content = node.get_content()
+                self.editor_buffer = content.splitlines() if content else [""]
+                if not self.editor_buffer:
+                    self.editor_buffer = [""]
+                self.editor_cursor = [0, 0]
+            else:
+                children = node.get_children()
+                if children:
+                    if len(self.columns) > self.active_col + 1:
+                        self.columns[self.active_col+1] = children
+                        self.indices[self.active_col+1] = 0
+                        self.scroll_offsets[self.active_col+1] = 0
+                    else:
+                        self.columns.append(children)
+                        self.indices.append(0)
+                        self.scroll_offsets.append(0)
+                    self.active_col += 1
+                else:
+                    msg = node.execute()
+                    if msg:
+                        self.message = msg
+        elif key == '\x1b[D' and self.active_col > 0: # Left
+            self.active_col -= 1
+            self.columns = self.columns[:self.active_col+1]
+            self.indices = self.indices[:self.active_col+1]
+            self.scroll_offsets = self.scroll_offsets[:self.active_col+1]
+            self.search_buffer = ""
+
+    def _process_key(self, key: str):
+        if self.editor_mode:
+            self._handle_editor_key(key)
+        elif self.search_mode:
+            self._handle_search_key(key)
+        elif self.edit_mode:
+            self._handle_edit_key(key)
+        else:
+            self._handle_normal_key(key)
+
+    def run(self):
+        if self._handle_cli_args():
+            return
 
         from .bridge import set_active_tui, yggdrasil_to_tui
         set_active_tui(self)
@@ -383,151 +546,9 @@ class TUI:
             while self.running:
                 self.draw()
                 key = self._get_key()
-                if not key: continue
-
-                # Global keys
-                if not self.edit_mode and not self.search_mode:
-                    if key.lower() == 'q':
-                        break
-                    if key.lower() == 'h':
-                        self.show_help = not self.show_help
-                        continue
-                    if key == '/':
-                        self.search_mode = True
-                        self.search_buffer = ""
-                        continue
-
-                # Editor Mode
-                if self.editor_mode:
-                    col_nodes = self.get_filtered_column(self.active_col)
-                    node = col_nodes[self.indices[self.active_col]]
-                    from .nodes import EditorNode
-                    
-                    if key == '\x1b': # ESC
-                        self.editor_mode = False; continue
-                    elif key == '\x13': # Ctrl+S (might be tricky in raw, use special handling)
-                        msg = node.save_content("\n".join(self.editor_buffer))
-                        if msg: self.message = msg
-                        self.editor_mode = False; continue
-                    elif key == '\r' or key == '\n':
-                        # New line
-                        r, c = self.editor_cursor
-                        current_line = self.editor_buffer[r]
-                        self.editor_buffer[r] = current_line[:c]
-                        self.editor_buffer.insert(r + 1, current_line[c:])
-                        self.editor_cursor = [r + 1, 0]
-                    elif key == '\x1b[A': # Up
-                        self.editor_cursor[0] = max(0, self.editor_cursor[0] - 1)
-                        self.editor_cursor[1] = min(len(self.editor_buffer[self.editor_cursor[0]]), self.editor_cursor[1])
-                    elif key == '\x1b[B': # Down
-                        self.editor_cursor[0] = min(len(self.editor_buffer) - 1, self.editor_cursor[0] + 1)
-                        self.editor_cursor[1] = min(len(self.editor_buffer[self.editor_cursor[0]]), self.editor_cursor[1])
-                    elif key == '\x1b[C': # Right
-                        if self.editor_cursor[1] < len(self.editor_buffer[self.editor_cursor[0]]):
-                            self.editor_cursor[1] += 1
-                    elif key == '\x1b[D': # Left
-                        self.editor_cursor[1] = max(0, self.editor_cursor[1] - 1)
-                    elif key in ('\x7f', '\x08'): # Backspace
-                        r, c = self.editor_cursor
-                        if c > 0:
-                            line = self.editor_buffer[r]
-                            self.editor_buffer[r] = line[:c-1] + line[c:]
-                            self.editor_cursor[1] -= 1
-                        elif r > 0:
-                            # Merge with previous line
-                            prev_len = len(self.editor_buffer[r-1])
-                            self.editor_buffer[r-1] += self.editor_buffer[r]
-                            self.editor_buffer.pop(r)
-                            self.editor_cursor = [r-1, prev_len]
-                    elif len(key) == 1 and key.isprintable():
-                        r, c = self.editor_cursor
-                        line = self.editor_buffer[r]
-                        self.editor_buffer[r] = line[:c] + key + line[c:]
-                        self.editor_cursor[1] += 1
+                if not key:
                     continue
-
-                # Search Mode
-                if self.search_mode:
-                    if key == '\x1b': # Escape
-                        self.search_mode = False; self.search_buffer = ""
-                    elif key in ('\r', '\n'):
-                        self.search_mode = False
-                    elif key in ('\x7f', '\x08'): # Backspace
-                        self.search_buffer = self.search_buffer[:-1]
-                        self.indices[self.active_col] = 0
-                    elif len(key) == 1 and key.isprintable():
-                        self.search_buffer += key
-                        self.indices[self.active_col] = 0
-                    continue
-
-                # Edit Mode (Slider / Input)
-                if self.edit_mode:
-                    col_nodes = self.get_filtered_column(self.active_col)
-                    node = col_nodes[self.indices[self.active_col]]
-                    from .nodes import Slider, InputNode
-                    
-                    if isinstance(node, Slider):
-                        if key == '\x1b[C': node.adjust(node.step) # Right
-                        elif key == '\x1b[D': node.adjust(-node.step) # Left
-                        elif key in ('\r', '\n', '\x1b'): self.edit_mode = False
-                    elif isinstance(node, InputNode):
-                        if key in ('\r', '\n'):
-                            msg = node.execute_input(self.search_buffer)
-                            if msg: self.message = msg
-                            self.edit_mode = False; self.search_buffer = ""
-                        elif key == '\x1b': self.edit_mode = False; self.search_buffer = ""
-                        elif key in ('\x7f', '\x08'): self.search_buffer = self.search_buffer[:-1]
-                        elif len(key) == 1: self.search_buffer += key
-                    continue
-
-                # Normal Navigation
-                col_nodes = self.get_filtered_column(self.active_col)
-                if not col_nodes:
-                    if key == '\x1b[D': # Left
-                        self.active_col -= 1
-                        self.columns = self.columns[:self.active_col+1]
-                        self.indices = self.indices[:self.active_col+1]
-                        self.scroll_offsets = self.scroll_offsets[:self.active_col+1]
-                    continue
-
-                if key == '\x1b[A': # Up
-                    self.indices[self.active_col] = (self.indices[self.active_col] - 1) % len(col_nodes)
-                elif key == '\x1b[B': # Down
-                    self.indices[self.active_col] = (self.indices[self.active_col] + 1) % len(col_nodes)
-                elif key == '\x1b[C' or key in ('\r', '\n'): # Right / Enter
-                    node = col_nodes[self.indices[self.active_col]]
-                    from .nodes import Slider, InputNode, EditorNode
-                    
-                    if isinstance(node, (Slider, InputNode)):
-                        self.edit_mode = True
-                        if isinstance(node, InputNode): self.search_buffer = ""
-                    elif isinstance(node, EditorNode):
-                        self.editor_mode = True
-                        content = node.get_content()
-                        self.editor_buffer = content.splitlines() if content else [""]
-                        if not self.editor_buffer: self.editor_buffer = [""]
-                        self.editor_cursor = [0, 0]
-                    else:
-                        children = node.get_children()
-                        if children:
-                            if len(self.columns) > self.active_col + 1:
-                                self.columns[self.active_col+1] = children
-                                self.indices[self.active_col+1] = 0
-                                self.scroll_offsets[self.active_col+1] = 0
-                            else:
-                                self.columns.append(children)
-                                self.indices.append(0)
-                                self.scroll_offsets.append(0)
-                            self.active_col += 1
-                        else:
-                            msg = node.execute()
-                            if msg: self.message = msg
-                elif key == '\x1b[D' and self.active_col > 0: # Left
-                    self.active_col -= 1
-                    self.columns = self.columns[:self.active_col+1]
-                    self.indices = self.indices[:self.active_col+1]
-                    self.scroll_offsets = self.scroll_offsets[:self.active_col+1]
-                    self.search_buffer = ""
+                self._process_key(key)
         finally:
             from .bridge import set_active_tui
             set_active_tui(None)

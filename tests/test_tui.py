@@ -104,3 +104,47 @@ def test_color_text():
     assert color_text("World", "32") == "\033[32mWorld\033[0m"
     assert color_text("", "0") == "\033[0m\033[0m"
     assert color_text("Test", "1;31") == "\033[1;31mTest\033[0m"
+
+class TestTUIKeyHandlers:
+    def test_handle_normal_key_navigation_and_modes(self):
+        tui = TUI(title="KeyTest")
+        tui.add_setting("Volume", default=50, parent="Settings")
+        tui.root = yggdrasil_to_tui(tui.state, tui.title)
+        tui.columns = [tui.root.get_children()]
+        tui.indices = [0]
+
+        # Toggle help
+        assert tui.show_help is False
+        tui._process_key('h')
+        assert tui.show_help is True
+
+        # Search mode enter
+        tui._process_key('/')
+        assert tui.search_mode is True
+
+        # Search key input
+        tui._process_key('s')
+        assert tui.search_buffer == "s"
+
+        # Search key escape
+        tui._process_key('\x1b')
+        assert tui.search_mode is False
+        assert tui.search_buffer == ""
+
+        # Quit key
+        tui._process_key('q')
+        assert tui.running is False
+
+    def test_handle_cli_args(self):
+        tui = TUI(title="CLITest")
+        tui.add_setting("Volume", default=70, parent="Settings")
+
+        with patch("sys.argv", ["main.py", "--json-schema"]):
+            with patch("builtins.print") as mock_print:
+                handled = tui._handle_cli_args()
+                assert handled is True
+                assert mock_print.called
+
+        with patch("sys.argv", ["main.py"]):
+            handled = tui._handle_cli_args()
+            assert handled is False
