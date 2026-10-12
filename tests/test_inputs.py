@@ -86,6 +86,21 @@ class TestFloatPut(unittest.TestCase):
         assert mock_input.call_count == 2
         assert mock_print.call_count == 1
 
+    @patch('builtins.input', return_value='3.14')
+    def test_float_put_with_conditions(self, mock_input):
+        """Test float input with conditions"""
+        result = float_put("Enter a float: ", conditions=[lambda x: x > 0.0, lambda x: x < 10.0])
+        assert result == 3.14
+
+    @patch('builtins.input', side_effect=['invalid', 'invalid', 'invalid'])
+    @patch('builtins.print')
+    def test_float_put_max_times(self, mock_print, mock_input):
+        """Test max_times parameter"""
+        result = float_put("Enter a float: ", max_times=3, times=1, default=9.9)
+        assert result == 9.9
+        assert mock_input.call_count == 3
+        assert mock_print.call_count >= 3
+
 
 class TestChoicePut(unittest.TestCase):
     """Tests for choice_put function"""

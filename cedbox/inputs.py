@@ -13,42 +13,31 @@ def string_put(text, max_times=None, times=1, default='') -> str:
         return raw_input
 
 
-def int_put(text, max_times=None, times=1, default=1, conditions=None) -> int:
+def _number_put(cast_type, text, max_times=None, times=1, default=None, conditions=None):
     if conditions is None:
         conditions = []
 
     raw_input = input(text)
     try:
-        int_input = int(raw_input)
+        num_input = cast_type(raw_input)
         for condition in conditions:
-            if not condition(int_input):
-                raise ValueError(f"Condition not met for {int_input}")
-        return int_input
+            if not condition(num_input):
+                raise ValueError(f"Condition not met for {num_input}")
+        return num_input
     except Exception as e:
         print(f'{raw_input} is not valid {e}')
         if max_times and times >= max_times:
             print(f'Exceeded {max_times} Trys, using default Value {default}')
             return default
-        return int_put(text, max_times=max_times, times=times + 1, default=default, conditions=conditions)
+        return _number_put(cast_type, text, max_times=max_times, times=times + 1, default=default, conditions=conditions)
+
+
+def int_put(text, max_times=None, times=1, default=1, conditions=None) -> int:
+    return _number_put(int, text, max_times=max_times, times=times, default=default, conditions=conditions)
 
 
 def float_put(text, max_times=None, times=1, default=1.0, conditions=None) -> float:
-    if conditions is None:
-        conditions = []
-
-    raw_input = input(text)
-    try:
-        float_input = float(raw_input)
-        for condition in conditions:
-            if not condition(float_input):
-                raise ValueError(f"Condition not met for {float_input}")
-        return float_input
-    except Exception as e:
-        print(f'{raw_input} is not valid {e}')
-        if max_times and times >= max_times:
-            print(f'Exceeded {max_times} Trys, using default Value {default}')
-            return default
-        return float_put(text, max_times=max_times, times=times + 1, default=default, conditions=conditions)
+    return _number_put(float, text, max_times=max_times, times=times, default=default, conditions=conditions)
 
 
 def choice_put(text: str, choices: list, max_times=None, times=1, def_choice_by_index=1) -> str:
