@@ -26,77 +26,45 @@ class Yggdrasil(dict):
             self[key] = self.__class__(leaf_behavior=self.leaf_behavior)
         return super().__getitem__(key)
 
+    def _apply_leaf_behavior(self, existing_value, new_value):
+        """
+        Calculate the new value for a leaf node based on self.leaf_behavior.
+        """
+        if callable(self.leaf_behavior):
+            try:
+                return self.leaf_behavior(existing_value, new_value)
+            except Exception:
+                return new_value
+
+        if self.leaf_behavior == 'overwrite' or existing_value is None:
+            return new_value
+
+        if self.leaf_behavior == 'append':
+            try:
+                return existing_value + new_value
+            except (TypeError, ValueError):
+                return new_value
+
+        if self.leaf_behavior in ('add', 'subtract', 'multiply', 'divide') and new_value is not None:
+            if isinstance(existing_value, (int, float)) and isinstance(new_value, (int, float)):
+                if self.leaf_behavior == 'add':
+                    return existing_value + new_value
+                if self.leaf_behavior == 'subtract':
+                    return existing_value - new_value
+                if self.leaf_behavior == 'multiply':
+                    return existing_value * new_value
+                if self.leaf_behavior == 'divide' and new_value != 0:
+                    return existing_value / new_value
+
+        return new_value
+
     def __setitem__(self, key, values=None):
         if not isinstance(values, list) or not values:
             # Handle leaf node behavior if the key already exists
             if key in self and not isinstance(super().__getitem__(key), Yggdrasil):
                 existing_value = super().__getitem__(key)
-
-                # Check if leaf_behavior is a callable (custom function)
-                if callable(self.leaf_behavior):
-                    try:
-                        # Call the custom function with existing and new values
-                        new_value = self.leaf_behavior(existing_value, values)
-                        super().__setitem__(key, new_value)
-                    except Exception as e:
-                        # If the custom function fails, fall back to overwrite
-                        super().__setitem__(key, values)
-                # Apply the specified behavior
-                elif self.leaf_behavior == 'overwrite' or existing_value is None:
-                    # Default behavior - just overwrite
-                    super().__setitem__(key, values)
-                elif self.leaf_behavior == 'append':
-                    # Try to append values
-                    try:
-                        new_value = existing_value + values
-                        super().__setitem__(key, new_value)
-                    except (TypeError, ValueError):
-                        # If append fails, fall back to overwrite
-                        super().__setitem__(key, values)
-                elif self.leaf_behavior == 'add' and values is not None:
-                    # Try to add values numerically - only for numeric types
-                    if (isinstance(existing_value, (int, float)) and 
-                        isinstance(values, (int, float))):
-                        new_value = existing_value + values
-                        super().__setitem__(key, new_value)
-                    else:
-                        # For non-numeric types, fall back to overwrite
-                        super().__setitem__(key, values)
-                elif self.leaf_behavior == 'multiply' and values is not None:
-                    # Try to multiply values - only for numeric types
-                    if (isinstance(existing_value, (int, float)) and 
-                        isinstance(values, (int, float))):
-                        new_value = existing_value * values
-                        super().__setitem__(key, new_value)
-                    else:
-                        # For non-numeric types, fall back to overwrite
-                        super().__setitem__(key, values)
-                elif self.leaf_behavior == 'subtract' and values is not None:
-                    # Try to subtract values - only for numeric types
-                    if (isinstance(existing_value, (int, float)) and 
-                        isinstance(values, (int, float))):
-                        new_value = existing_value - values
-                        super().__setitem__(key, new_value)
-                    else:
-                        # For non-numeric types, fall back to overwrite
-                        super().__setitem__(key, values)
-                elif self.leaf_behavior == 'divide' and values is not None:
-                    # Try to divide values - only for numeric types
-                    if (isinstance(existing_value, (int, float)) and 
-                        isinstance(values, (int, float))):
-                        # Check for division by zero
-                        if values == 0:
-                            # For division by zero, fall back to overwrite
-                            super().__setitem__(key, values)
-                        else:
-                            new_value = existing_value / values
-                            super().__setitem__(key, new_value)
-                    else:
-                        # For non-numeric types, fall back to overwrite
-                        super().__setitem__(key, values)
-                else:
-                    # Unknown behavior or incompatible types, fall back to overwrite
-                    super().__setitem__(key, values)
+                new_value = self._apply_leaf_behavior(existing_value, values)
+                super().__setitem__(key, new_value)
             else:
                 # Key doesn't exist or is a Yggdrasil instance, just set the value
                 super().__setitem__(key, values)
