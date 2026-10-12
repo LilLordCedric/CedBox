@@ -40,7 +40,8 @@ class EasyStream:
         """
         if duration > 0:  # Signal
             num_samples = int(abs(duration) * self.sample_rate / 1000)
-            return [math.sin(2 * math.pi * self.frequency * (float(i) / self.sample_rate))
+            multiplier = 2 * math.pi * self.frequency / self.sample_rate
+            return [math.sin(multiplier * i)
                     for i in range(num_samples)]
         else:  # Pause
             num_samples = int(abs(duration) * self.sample_rate / 1000)
